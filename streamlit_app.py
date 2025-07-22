@@ -70,9 +70,42 @@ def json_to_dataframe(data, filename):
         st.error(f"Errore nella conversione del file {filename}: {str(e)}")
         return pd.DataFrame()
 
-# Funzione per creare grafici automatici
+# Funzione per processare dati di esercizi fitness
+def process_fitness_data(df):
+    """Processa specificamente i dati di esercizi fitness"""
+    
+    # Converti le date se presenti
+    if 'startTime' in df.columns:
+        df['startTime'] = pd.to_datetime(df['startTime'])
+        df['date'] = df['startTime'].dt.date
+        df['hour'] = df['startTime'].dt.hour
+        df['day_of_week'] = df['startTime'].dt.day_name()
+    
+    # Converti la durata da formato PT in minuti
+    if 'duration' in df.columns:
+        def parse_duration(duration_str):
+            try:
+                if 'PT' in duration_str and 'S' in duration_str:
+                    seconds = float(duration_str.replace('PT', '').replace('S', ''))
+                    return seconds / 60  # Converti in minuti
+                return None
+            except:
+                return None
+        
+        df['duration_minutes'] = df['duration'].apply(parse_duration)
+    
+    # Calcola velocità media in km/h se non presente
+    if 'distance' in df.columns and 'duration_minutes' in df.columns:
+        df['speed_kmh'] = (df['distance'] / 1000) / (df['duration_minutes'] / 60)
+    
+    return df
+
+# Funzione per creare grafici automatici ottimizzati per fitness data
 def create_automatic_charts(df, filename):
     charts = []
+    
+    # Processa i dati fitness
+    df = process_fitness_data(df.copy())
     
     # Escludi la colonna source_file dall'analisi
     data_cols = [col for col in df.columns if col != 'source_file']
@@ -80,57 +113,100 @@ def create_automatic_charts(df, filename):
     if len(data_cols) == 0:
         return charts
     
-    # Identifica colonne numeriche e categoriche
-    numeric_cols = df[data_cols].select_dtypes(include=[np.number]).columns.tolist()
-    categorical_cols = df[data_cols].select_dtypes(include=['object', 'category']).columns.tolist()
+    # Grafici specifici per dati fitness
     
-    # Grafico a barre per colonne categoriche con conteggi
-    for col in categorical_cols:
-        if df[col].nunique() <= 20:  # Solo se ci sono meno di 20 valori unici
-            value_counts = df[col].value_counts()
-            fig = px.bar(
-                x=value_counts.index,
-                y=value_counts.values,
-                title=f'Distribuzione di {col}',
-                labels={'x': col, 'y': 'Frequenza'}
-            )
-            fig.update_layout(xaxis_tickangle=-45)
-            charts.append(('bar', fig))
-    
-    # Istogrammi per colonne numeriche
-    for col in numeric_cols:
-        fig = px.histogram(
-            df, 
-            x=col, 
-            title=f'Distribuzione di {col}',
-            nbins=30
+    # 1. Distribuzione sport
+    if 'sport' in df.columns:
+        value_counts = df['sport'].value_counts()
+        fig = px.pie(
+            values=value_counts.values,
+            names=value_counts.index,
+            title='Distribuzione Tipi di Sport'
         )
-        charts.append(('histogram', fig))
+        charts.append(('pie', fig))
     
-    # Scatter plot se ci sono almeno 2 colonne numeriche
-    if len(numeric_cols) >= 2:
+    # 2. Andamento nel tempo - Distanza
+    if 'startTime' in df.columns and 'distance' in df.columns:
         fig = px.scatter(
             df,
-            x=numeric_cols[0],
-            y=numeric_cols[1],
-            title=f'Relazione tra {numeric_cols[0]} e {numeric_cols[1]}',
-            color=categorical_cols[0] if categorical_cols else None
+            x='startTime',
+            y='distance',
+            title='Distanza nel Tempo',
+            labels={'distance': 'Distanza (m)', 'startTime': 'Data'},
+            color='sport' if 'sport' in df.columns else None
+        )
+        fig.update_traces(mode='markers+lines')
+        charts.append(('timeline', fig))
+    
+    # 3. Calorie vs Durata
+    if 'kiloCalories' in df.columns and 'duration_minutes' in df.columns:
+        fig = px.scatter(
+            df,
+            x='duration_minutes',
+            y='kiloCalories',
+            title='Calorie vs Durata',
+            labels={'duration_minutes': 'Durata (min)', 'kiloCalories': 'Calorie'},
+            color='sport' if 'sport' in df.columns else None,
+            size='distance' if 'distance' in df.columns else None
         )
         charts.append(('scatter', fig))
     
-    # Line chart per dati temporali o sequenziali
-    if len(numeric_cols) >= 1:
-        # Crea un indice sequenziale
-        df_indexed = df.copy()
-        df_indexed['index'] = range(len(df_indexed))
-        
-        fig = px.line(
-            df_indexed,
-            x='index',
-            y=numeric_cols[0],
-            title=f'Andamento di {numeric_cols[0]}'
+    # 4. Frequenza cardiaca media
+    if 'heartRate.avg' in df.columns:
+        fig = px.histogram(
+            df,
+            x='heartRate.avg',
+            title='Distribuzione Frequenza Cardiaca Media',
+            labels={'heartRate.avg': 'BPM Medio'},
+            nbins=20
         )
-        charts.append(('line', fig))
+        charts.append(('histogram', fig))
+    
+    # 5. Allenamenti per giorno della settimana
+    if 'day_of_week' in df.columns:
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_counts = df['day_of_week'].value_counts()
+        day_counts = day_counts.reindex(day_order, fill_value=0)
+        
+        fig = px.bar(
+            x=day_counts.index,
+            y=day_counts.values,
+            title='Allenamenti per Giorno della Settimana',
+            labels={'x': 'Giorno', 'y': 'Numero Allenamenti'}
+        )
+        charts.append(('bar', fig))
+    
+    # 6. Velocità media vs Distanza
+    if 'speed_kmh' in df.columns and 'distance' in df.columns:
+        fig = px.scatter(
+            df,
+            x='distance',
+            y='speed_kmh',
+            title='Velocità vs Distanza',
+            labels={'distance': 'Distanza (m)', 'speed_kmh': 'Velocità (km/h)'},
+            color='sport' if 'sport' in df.columns else None
+        )
+        charts.append(('scatter', fig))
+    
+    # 7. Box plot delle altitudini se disponibili
+    if 'altitude.min' in df.columns and 'altitude.max' in df.columns and 'altitude.avg' in df.columns:
+        altitude_data = []
+        for _, row in df.iterrows():
+            altitude_data.extend([
+                {'type': 'Min', 'altitude': row['altitude.min']},
+                {'type': 'Avg', 'altitude': row['altitude.avg']},
+                {'type': 'Max', 'altitude': row['altitude.max']}
+            ])
+        
+        altitude_df = pd.DataFrame(altitude_data)
+        fig = px.box(
+            altitude_df,
+            x='type',
+            y='altitude',
+            title='Distribuzione Altitudine (Min/Avg/Max)',
+            labels={'altitude': 'Altitudine (m)', 'type': 'Tipo'}
+        )
+        charts.append(('box', fig))
     
     return charts
 
@@ -159,24 +235,96 @@ if uploaded_files:
                 st.warning("Impossibile convertire i dati in un formato tabulare")
                 continue
             
-            # Mostra informazioni sul dataset
-            col1, col2, col3 = st.columns(3)
+            # Processa i dati fitness per metriche aggiuntive
+            df_processed = process_fitness_data(df.copy())
+            
+            # Mostra informazioni sul dataset con metriche fitness
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Righe", len(df))
+                st.metric("Allenamenti", len(df))
             with col2:
-                st.metric("Colonne", len(df.columns) - 1)  # -1 per escludere source_file
+                if 'distance' in df.columns:
+                    total_distance = df['distance'].sum() / 1000  # Converti in km
+                    st.metric("Distanza Totale", f"{total_distance:.1f} km")
+                else:
+                    st.metric("Colonne", len(df.columns) - 1)
             with col3:
-                st.metric("Memoria", f"{df.memory_usage().sum() / 1024:.1f} KB")
+                if 'kiloCalories' in df.columns:
+                    total_calories = df['kiloCalories'].sum()
+                    st.metric("Calorie Totali", f"{total_calories:,.0f}")
+                else:
+                    st.metric("Memoria", f"{df.memory_usage().sum() / 1024:.1f} KB")
+            with col4:
+                if 'duration_minutes' in df_processed.columns:
+                    total_time = df_processed['duration_minutes'].sum()
+                    hours = int(total_time // 60)
+                    minutes = int(total_time % 60)
+                    st.metric("Tempo Totale", f"{hours}h {minutes}m")
+                else:
+                    st.metric("Memoria", f"{df.memory_usage().sum() / 1024:.1f} KB")
             
             # Mostra anteprima dei dati
             st.subheader("📋 Anteprima Dati")
             st.dataframe(df.drop(columns=['source_file']), use_container_width=True)
             
-            # Statistiche descrittive
+            # Statistiche descrittive fitness-specific
+            st.subheader("📈 Statistiche degli Allenamenti")
+            
+            # Crea un summary personalizzato per i dati fitness
+            fitness_stats = {}
+            
+            if 'distance' in df.columns:
+                fitness_stats['Distanza (km)'] = [
+                    df['distance'].min() / 1000,
+                    df['distance'].mean() / 1000,
+                    df['distance'].max() / 1000,
+                    df['distance'].std() / 1000
+                ]
+            
+            if 'duration_minutes' in df_processed.columns:
+                fitness_stats['Durata (min)'] = [
+                    df_processed['duration_minutes'].min(),
+                    df_processed['duration_minutes'].mean(),
+                    df_processed['duration_minutes'].max(),
+                    df_processed['duration_minutes'].std()
+                ]
+            
+            if 'kiloCalories' in df.columns:
+                fitness_stats['Calorie'] = [
+                    df['kiloCalories'].min(),
+                    df['kiloCalories'].mean(),
+                    df['kiloCalories'].max(),
+                    df['kiloCalories'].std()
+                ]
+            
+            if 'heartRate.avg' in df.columns:
+                fitness_stats['FC Media (BPM)'] = [
+                    df['heartRate.avg'].min(),
+                    df['heartRate.avg'].mean(),
+                    df['heartRate.avg'].max(),
+                    df['heartRate.avg'].std()
+                ]
+            
+            if 'speed_kmh' in df_processed.columns:
+                fitness_stats['Velocità (km/h)'] = [
+                    df_processed['speed_kmh'].min(),
+                    df_processed['speed_kmh'].mean(),
+                    df_processed['speed_kmh'].max(),
+                    df_processed['speed_kmh'].std()
+                ]
+            
+            if fitness_stats:
+                fitness_df = pd.DataFrame(
+                    fitness_stats,
+                    index=['Min', 'Media', 'Max', 'Deviazione Std']
+                )
+                st.dataframe(fitness_df.round(2), use_container_width=True)
+            
+            # Statistiche descrittive generali per altre colonne
             numeric_data = df.select_dtypes(include=[np.number])
             if not numeric_data.empty:
-                st.subheader("📈 Statistiche Descrittive")
-                st.dataframe(numeric_data.describe(), use_container_width=True)
+                with st.expander("📊 Statistiche Complete"):
+                    st.dataframe(numeric_data.describe(), use_container_width=True)
             
             # Grafici automatici
             st.subheader("📊 Visualizzazioni")
@@ -244,12 +392,21 @@ else:
     
     with col1:
         st.markdown("""
-        **Formato Array di Oggetti:**
+        **Dati Fitness/Allenamenti:**
         ```json
-        [
-            {"nome": "Mario", "età": 30, "città": "Roma"},
-            {"nome": "Lucia", "età": 25, "città": "Milano"}
-        ]
+        {
+          "exercises": [
+            {
+              "startTime": "2025-07-21T04:53:40.000",
+              "distance": 7545.60009765625,
+              "sport": "OTHER_OUTDOOR",
+              "kiloCalories": 722,
+              "heartRate": {
+                "min": 62, "avg": 110, "max": 138
+              }
+            }
+          ]
+        }
         ```
         """)
     
@@ -259,7 +416,8 @@ else:
         ```json
         {
             "vendite": [100, 150, 200, 175],
-            "mesi": ["Gen", "Feb", "Mar", "Apr"]
+            "mesi": ["Gen", "Feb", "Mar", "Apr"],
+            "regioni": ["Nord", "Sud", "Centro", "Isole"]
         }
         ```
         """)
