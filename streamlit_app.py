@@ -115,13 +115,50 @@ if not df.empty:
     - **Distanza (km)**: distanza totale della sessione
     - **FC Media / Massima**: valori della frequenza cardiaca (in bpm)
     - **Calorie**: stima delle kcal bruciate
-    - **Velocità Media / Max**: km/h durante la sessione  
-    - **Tempo in Zona 1–3**: minuti trascorsi in zone cardiache  
     - **Sport**: attività eseguita (es. running, cycling)
     """)
     st.dataframe(df)
 
-    # Calcolo training load e analisi
+    # Grafico zone cardiache
+    st.subheader("🫀 Distribuzione Zone Cardiache (Z1–Z3)")
+    zona1 = df["Tempo in Zona 1"].sum()
+    zona2 = df["Tempo in Zona 2"].sum()
+    zona3 = df["Tempo in Zona 3"].sum()
+    zone_labels = ["Zona 1 (bassa intensità)", "Zona 2 (aerobica)", "Zona 3 (soglia)"]
+    zone_values = [zona1, zona2, zona3]
+    fig, ax = plt.subplots()
+    ax.pie(zone_values, labels=zone_labels, autopct="%1.1f%%", startangle=90)
+    ax.axis("equal")
+    st.pyplot(fig)
+
+    # Confronto tra Velocità Media e Tempo in Zona 2
+    st.subheader("⚖️ Confronto: Velocità Media vs Tempo in Zona 2")
+    if "Velocità Media (km/h)" in df.columns and "Tempo in Zona 2" in df.columns:
+        fig2, ax2 = plt.subplots()
+        ax2.scatter(df["Velocità Media (km/h)"], df["Tempo in Zona 2"], alpha=0.7, color="green")
+        ax2.set_xlabel("Velocità Media (km/h)")
+        ax2.set_ylabel("Tempo in Zona 2 (minuti)")
+        ax2.set_title("Velocità Media vs Tempo in Zona 2")
+        st.pyplot(fig2)
+
+        correlation = df[["Velocità Media (km/h)", "Tempo in Zona 2"]].corr().iloc[0, 1]
+        if correlation > 0.5:
+            st.success(f"✅ C'è una forte correlazione ({correlation:.2f}) tra velocità media e tempo in zona aerobica.")
+        elif correlation < -0.5:
+            st.warning(f"⚠️ Correlazione negativa ({correlation:.2f}): più vai veloce, meno stai in zona 2. Valuta ritmo e intensità.")
+        else:
+            st.info(f"ℹ️ Correlazione debole ({correlation:.2f}): la velocità non incide molto sul tempo in zona aerobica.")
+
+    # Feedback interpretativo
+    total_zone_time = sum(zone_values)
+    if zona2 / total_zone_time < 0.4:
+        st.warning("⚠️ Trascorri poco tempo in Zona 2: potresti non allenare abbastanza la resistenza aerobica.")
+    elif zona2 / total_zone_time > 0.6:
+        st.success("✅ Ottimo: buona quota di lavoro in zona aerobica.")
+    else:
+        st.info("ℹ️ Zona 2 nel range medio. Potresti alternare con sedute più intense o leggere.")
+
+
     df_raw, df_daily, df_weekly, daily_loads, acwr = performance_analysis(df)
 
     st.subheader("📊 Analisi Predittiva – Coach Virtuale")
