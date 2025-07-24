@@ -75,7 +75,7 @@ if uploaded_files:
         subset=["Tempo in Zona 2"]
 )
 
-        )
+
         st.dataframe(styled_df, use_container_width=True)
 
         # Analisi Zone Cardiache
