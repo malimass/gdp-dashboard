@@ -65,15 +65,16 @@ if uploaded_files:
 
     if not df.empty:
         st.subheader("📅 Allenamenti Caricati")
-        styled_df = df.style
+                styled_df = df.style
         styled_df = styled_df.applymap(
             lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160 else '',
             subset=["Frequenza Cardiaca Massima"]
         )
-                styled_df = styled_df.applymap(
+        styled_df = styled_df.applymap(
             lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10 else '',
             subset=["Tempo in Zona 2"]
         )
+
         st.dataframe(styled_df, use_container_width=True)
 
         # Analisi Zone Cardiache
