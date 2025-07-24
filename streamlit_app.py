@@ -89,6 +89,7 @@ if not df.empty:
     # 🔁 Evoluzione del rischio infortuni nel tempo (aggiornato)
     st.subheader("📉 Evoluzione del Rischio Infortuni")
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
+    df.set_index("date", inplace=True)
     rischio_settimanale = df.resample("W")["Supera FC Max"].sum()
     fig_rischio, ax_rischio = plt.subplots(figsize=(10, 4))
     bars = ax_rischio.bar(rischio_settimanale.index.strftime('%d %b'), rischio_settimanale, color="crimson")
@@ -113,3 +114,4 @@ if not df.empty:
     st.pyplot(fig_fc)
 else:
     st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
+
