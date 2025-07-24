@@ -11,16 +11,16 @@ import json
 @st.cache_data
 def load_json_training_data(uploaded_file):
     data = json.load(uploaded_file)
-    summary = data.get("exercises", [{}])[0]
+    exercise = data.get("exercises", [{}])[0]
 
     record = {
-        "date": pd.to_datetime(summary.get("startTime")),
-        "Durata": summary.get("duration", 0) / 60,  # in minuti
-        "Distanza (km)": summary.get("distance", 0) / 1000,
-        "Calorie": summary.get("calories", 0),
-        "Frequenza Cardiaca Media": summary.get("heartRate", {}).get("average", 0),
-        "Frequenza Cardiaca Massima": summary.get("heartRate", {}).get("maximum", 0),
-        "Note": summary.get("notes", "")
+        "date": pd.to_datetime(exercise.get("startTime")),
+        "Durata": exercise.get("duration", 0) / 60,  # secondi → minuti
+        "Distanza (km)": exercise.get("distance", 0) / 1000,  # metri → km
+        "Calorie": exercise.get("kiloCalories", 0),
+        "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("average", 0),
+        "Frequenza Cardiaca Massima": exercise.get("heartRate", {}).get("maximum", 0),
+        "Sport": exercise.get("sport", "N/D")
     }
     df = pd.DataFrame([record])
     return df
@@ -63,4 +63,5 @@ if uploaded_file:
     """)
 else:
     st.info("Carica un file JSON di allenamento esportato da Polar Flow per iniziare.")
+
 
