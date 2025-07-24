@@ -109,25 +109,25 @@ if uploaded_files:
 
 if not df.empty:
     st.subheader("📋 Dati Allenamento Estratti")
-st.markdown("""
-**Colonne principali:**
-- **Durata**: in minuti
-- **Distanza (km)**: distanza totale della sessione
-- **FC Media / Massima**: valori della frequenza cardiaca (in bpm)
-- **Calorie**: stima delle kcal bruciate
-- **Sport**: attività eseguita (es. running, cycling)
-""")
+    st.markdown("""
+    **Colonne principali:**
+    - **Durata**: in minuti
+    - **Distanza (km)**: distanza totale della sessione
+    - **FC Media / Massima**: valori della frequenza cardiaca (in bpm)
+    - **Calorie**: stima delle kcal bruciate
+    - **Sport**: attività eseguita (es. running, cycling)
+    """)
     st.dataframe(df)
 
     # Calcolo training load e analisi
     df_raw, df_daily, df_weekly, daily_loads, acwr = performance_analysis(df)
 
     st.subheader("📊 Analisi Predittiva – Coach Virtuale")
-st.markdown("""
-**Legenda grafici:**
-- **Carico Giornaliero**: indica quanto stress fisiologico hai accumulato in un singolo giorno (minuti x FC media).
-- **ACWR (Acute:Chronic Workload Ratio)**: rapporto tra carico acuto (3 giorni) e cronico (7 giorni). Valori ideali: **0.8–1.3**. Oltre 1.5 = rischio infortuni.
-""")
+    st.markdown("""
+    **Legenda grafici:**
+    - **Carico Giornaliero**: indica quanto stress fisiologico hai accumulato in un singolo giorno (minuti x FC media).
+    - **ACWR (Acute:Chronic Workload Ratio)**: rapporto tra carico acuto (3 giorni) e cronico (7 giorni). Valori ideali: **0.8–1.3**. Oltre 1.5 = rischio infortuni.
+    """)
     st.line_chart(daily_loads.rename("Carico Giornaliero"))
     st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
@@ -144,14 +144,18 @@ st.markdown("""
 
     # Analisi settimanale
     st.subheader("📅 Carico Settimanale")
-st.markdown("""
-**Training Load Settimanale:**
-Mostra il carico totale per ogni settimana (lunedì–domenica). Utile per verificare sovraccarichi o settimane troppo leggere.
-""")
+    st.markdown("""
+    **Training Load Settimanale:**
+    Mostra il carico totale per ogni settimana (lunedì–domenica). Utile per verificare sovraccarichi o settimane troppo leggere.
+    """)
     st.bar_chart(df_weekly["training_load"].rename("Training Load Settimanale"))
 
     # Esportazione dati
     st.download_button("📥 Scarica dati allenamento in CSV", df.to_csv().encode(), file_name="report_allenamento.csv")
+
+else:
+    st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
+
 
 else:
     st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
