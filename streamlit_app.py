@@ -80,111 +80,36 @@ file_names = [f for f in os.listdir("data") if f.endswith(".json")]
 data_files = [open(os.path.join("data", f), "rb") for f in file_names]
 df = load_multiple_json_training_data(data_files) if data_files else pd.DataFrame()
 
-# Visualizzazione dei dati elaborati
+# Se ci sono dati, calcola soglia FC max e crea grafici
 if not df.empty:
-    st.subheader("📈 Riepilogo Allenamenti")
-    st.dataframe(df)
-
-    df.set_index("date", inplace=True)
-    weekly = df.resample("W").sum(numeric_only=True)
-    monthly = df.resample("M").sum(numeric_only=True)
-
-    st.subheader("📆 Analisi Settimanale e Mensile")
-    st.bar_chart(weekly["Distanza (km)"])
-    st.bar_chart(monthly["Distanza (km)"])
-
-    pred_sett = weekly["Distanza (km)"].rolling(window=3).mean().iloc[-1]
-    pred_mese = monthly["Distanza (km)"].rolling(window=2).mean().iloc[-1]
-    st.subheader("🔮 Previsione Kilometri Futura")
-    st.success(f"📅 Previsto per la prossima settimana: {pred_sett:.1f} km")
-    st.success(f"🗓️ Previsto per il prossimo mese: {pred_mese:.1f} km")
-
-    st.subheader("📊 Analisi Prestazioni e Zone")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**Velocità Media e Tempo in Zona 2**")
-        plt.figure(figsize=(10,4))
-        plt.scatter(df["Velocità Media (km/h)"], df["Tempo in Zona 2 (min)"], alpha=0.7, c=df["Frequenza Cardiaca Media"], cmap="coolwarm")
-        plt.xlabel("Velocità Media (km/h)")
-        plt.ylabel("Tempo in Zona 2 (min)")
-        plt.colorbar(label="Frequenza Cardiaca Media")
-        st.pyplot(plt)
-
-    with col2:
-        st.write("**Frequenza Cardiaca Max e Calorie**")
-        plt.figure(figsize=(10,4))
-        plt.scatter(df["Frequenza Cardiaca Massima"], df["Calorie"], alpha=0.7)
-        plt.xlabel("FC Max")
-        plt.ylabel("Calorie")
-        st.pyplot(plt)
-
-    st.subheader("⚠️ Rischio Infortuni e Suggerimenti")
     eta = st.sidebar.slider("Inserisci la tua età", 18, 80, 47)
     fc_max_teorica = 220 - eta
     soglia_critica = 0.9 * fc_max_teorica
-    rischiosi = df[df["Frequenza Cardiaca Massima"] > soglia_critica]
-    if not rischiosi.empty:
-        st.warning(f"🚨 {len(rischiosi)} allenamenti hanno superato il 90% della FC Max teorica ({soglia_critica:.0f} bpm)")
-        st.dataframe(rischiosi[["Durata (min)", "Frequenza Cardiaca Massima", "Distanza (km)", "Calorie"]])
-    else:
-        st.success("✅ Nessun allenamento ha superato soglia critica di FC Max.")
 
-    st.subheader("📋 Suggerimenti del Coach Virtuale")
-    suggerimenti = []
-    if df["Tempo in Zona 3 (min)"].mean() > 10:
-        suggerimenti.append("🔄 Riduci il tempo in Zona 3 per evitare affaticamento eccessivo.")
-    if df["Frequenza Cardiaca Media"].mean() > 130:
-        suggerimenti.append("🧘 Prova ad alternare allenamenti leggeri per migliorare il recupero.")
-    if df["Velocità Media (km/h)"].mean() < 5:
-        suggerimenti.append("🏃 Lavora sulla cadenza per aumentare la velocità media gradualmente.")
-    if suggerimenti:
-        for s in suggerimenti:
-            st.info(s)
-    else:
-        st.success("💪 Ottimo andamento! Continua così!")
-
-    # 🔁 Evoluzione del rischio infortuni nel tempo
+    # 🔁 Evoluzione del rischio infortuni nel tempo (aggiornato)
     st.subheader("📉 Evoluzione del Rischio Infortuni")
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
     rischio_settimanale = df.resample("W")["Supera FC Max"].sum()
-    fig_rischio, ax_rischio = plt.subplots()
-    rischio_settimanale.plot(kind="bar", ax=ax_rischio, color="crimson")
+    fig_rischio, ax_rischio = plt.subplots(figsize=(10, 4))
+    bars = ax_rischio.bar(rischio_settimanale.index.strftime('%d %b'), rischio_settimanale, color="crimson")
     ax_rischio.set_ylabel("Allenamenti a rischio")
-    ax_rischio.set_title("N° allenamenti sopra soglia FC Max per settimana")
+    ax_rischio.set_xlabel("Settimane")
+    ax_rischio.set_title("🧠 Allenamenti sopra soglia FC Max per settimana")
+    ax_rischio.set_ylim(0, max(rischio_settimanale.max() + 1, 1))
+    ax_rischio.grid(True, linestyle='--', alpha=0.5)
+    for bar in bars:
+        yval = bar.get_height()
+        ax_rischio.text(bar.get_x() + bar.get_width()/2, yval + 0.1, int(yval), ha='center', va='bottom', fontsize=8)
     st.pyplot(fig_rischio)
 
-    # 📥 Esportazione riepilogo settimanale
-    st.subheader("🧾 Esporta riepilogo settimanale")
-    export_sett = weekly[["Distanza (km)", "Durata (min)", "Calorie"]].copy()
-    export_sett["Rischi FC"] = df.resample("W")["Supera FC Max"].sum()
-    csv_export = export_sett.to_csv().encode("utf-8")
-    st.download_button("📤 Scarica riepilogo settimanale (CSV)", data=csv_export, file_name="riepilogo_settimanale.csv", mime="text/csv")
-
-    # 📈 Nuovo grafico: Calorie vs Tempo in Zona 2
-    st.subheader("🔥 Calorie vs Tempo in Zona 2")
-    fig_z2, ax_z2 = plt.subplots()
-    ax_z2.scatter(df["Tempo in Zona 2 (min)"], df["Calorie"], color="darkorange", alpha=0.7)
-    ax_z2.set_xlabel("Tempo in Zona 2 (min)")
-    ax_z2.set_ylabel("Calorie")
-    ax_z2.set_title("Relazione tra Tempo in Zona 2 e Calorie bruciate")
-    st.pyplot(fig_z2)
-
-    # 🧠 Intelligenza suggerimenti evoluti
-    st.subheader("📋 Diagnosi automatica dell'allenamento")
-    diagnosi = []
-    if weekly["Distanza (km)"].mean() > 80:
-        diagnosi.append("📈 Il volume settimanale è elevato: attenzione al recupero.")
-    if (df["Tempo in Zona 3 (min)"].mean() > 15) and (df["Frequenza Cardiaca Massima"].mean() > soglia_critica):
-        diagnosi.append("🚨 Segni di sovraccarico. Considera una settimana di scarico.")
-    if pred_sett < weekly["Distanza (km)"].iloc[-1]:
-        diagnosi.append("📉 Il trend settimanale è in calo. Valuta intensità e motivazione.")
-    for d in diagnosi:
-        st.warning(d)
-    if not diagnosi:
-        st.success("✅ Nessuna anomalia evidente nei trend recenti.")
-
+    # 📈 Andamento della FC Massima nel tempo
+    st.subheader("📈 Andamento della Frequenza Cardiaca Massima nel tempo")
+    fig_fc, ax_fc = plt.subplots(figsize=(10, 4))
+    df["Frequenza Cardiaca Massima"].plot(ax=ax_fc, color="darkblue", marker="o", linestyle="-")
+    ax_fc.set_ylabel("FC Massima (bpm)")
+    ax_fc.set_xlabel("Data")
+    ax_fc.set_title("📊 Frequenza Cardiaca Massima nel tempo")
+    ax_fc.grid(True, linestyle='--', alpha=0.5)
+    st.pyplot(fig_fc)
 else:
     st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
-
-
-
