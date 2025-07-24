@@ -115,7 +115,10 @@ if not df.empty:
     - **Distanza (km)**: distanza totale della sessione
     - **FC Media / Massima**: valori della frequenza cardiaca (in bpm)
     - **Calorie**: stima delle kcal bruciate
+    - **Velocità Media / Max**: km/h durante la sessione  
+    - **Tempo in Zona 1–3**: minuti trascorsi in zone cardiache  
     - **Sport**: attività eseguita (es. running, cycling)
+
     """)
     st.dataframe(df)
 
