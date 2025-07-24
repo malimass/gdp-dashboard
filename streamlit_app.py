@@ -75,21 +75,24 @@ def load_json_from_folder(folder_path="data"):
 
 # Calcolo carico (robusto)
 def compute_training_load(row):
-    # Calcola il training load usando sempre Durata × FC Media
     if row["Durata"] > 0 and row["Frequenza Cardiaca Media"] > 0:
         return row["Durata"] * (row["Frequenza Cardiaca Media"] / 100)
     return 0
 
 # Analisi predittiva semplificata
+
 def performance_analysis(df):
     df["training_load"] = df.apply(compute_training_load, axis=1)
+    df["FC Relativa (% max)"] = 100 * df["Frequenza Cardiaca Media"] / df["Frequenza Cardiaca Massima"].replace(0, np.nan)
+    df["Efficienza cardiaca (km/bpm)"] = df["Distanza (km)"] / df["Frequenza Cardiaca Media"].replace(0, np.nan)
     df.set_index("date", inplace=True)
-    df = df.resample("D").sum()  # aggregazione giornaliera
-    daily_loads = df["training_load"]
+    df_daily = df.resample("D").sum()
+    df_weekly = df.resample("W-MON").sum()
+    daily_loads = df_daily["training_load"]
     short_term = daily_loads.rolling(window=3, min_periods=1).mean()
     long_term = daily_loads.rolling(window=7, min_periods=1).mean()
     acwr = short_term / long_term
-    return daily_loads, acwr
+    return df, df_daily, df_weekly, daily_loads, acwr
 
 # UI Streamlit
 st.title("Polar Flow Analyzer – Preparatore Virtuale")
@@ -103,28 +106,33 @@ uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar 
 if uploaded_files:
     save_uploaded_files(uploaded_files, "data")
     df = load_multiple_json_training_data(uploaded_files)
-    uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar Flow", type="json", accept_multiple_files=True)
-    if uploaded_files:
-        save_uploaded_files(uploaded_files, "data")
-        df = load_multiple_json_training_data(uploaded_files)
-    else:
-        df = pd.DataFrame()
 
 if not df.empty:
     st.subheader("📋 Dati Allenamento Estratti")
     st.dataframe(df)
 
     # Calcolo training load e analisi
-    daily_loads, acwr = performance_analysis(df)
+    df_raw, df_daily, df_weekly, daily_loads, acwr = performance_analysis(df)
 
-    st.subheader("📊 Coach Virtuale")
+    st.subheader("📊 Analisi Predittiva – Coach Virtuale")
     st.line_chart(daily_loads.rename("Carico Giornaliero"))
     st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
-    st.markdown("""
-    ### Analisi Rischio:
-    - ACWR > 1.5 = rischio infortunio
-    - ACWR < 0.8 = carico troppo basso
-    """)
+    # Feedback automatico
+    if acwr.iloc[-1] > 1.5:
+        st.error("⚠️ Rischio infortunio: stai caricando troppo rispetto alla tua media settimanale.")
+    elif acwr.iloc[-1] < 0.8:
+        st.info("ℹ️ Il tuo carico è troppo basso: potresti perdere forma fisica.")
+    else:
+        st.success("✅ Il tuo carico è ben bilanciato. Continua così!")
+
+    # Analisi settimanale
+    st.subheader("📅 Carico Settimanale")
+    st.bar_chart(df_weekly["training_load"].rename("Training Load Settimanale"))
+
+    # Esportazione dati
+    st.download_button("📥 Scarica dati allenamento in CSV", df.to_csv().encode(), file_name="report_allenamento.csv")
+
 else:
     st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
+
