@@ -117,7 +117,7 @@ if not df.empty:
     # Calcolo training load e analisi
     daily_loads, acwr = performance_analysis(df)
 
-    st.subheader("📊 Analisi Predittiva – Coach Virtuale")
+    st.subheader("📊 Coach Virtuale")
     st.line_chart(daily_loads.rename("Carico Giornaliero"))
     st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
