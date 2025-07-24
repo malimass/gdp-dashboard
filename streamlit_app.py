@@ -75,9 +75,8 @@ def load_json_from_folder(folder_path="data"):
 
 # Calcolo carico (robusto)
 def compute_training_load(row):
-    if row["Calorie"] > 0:
-        return row["Calorie"]
-    elif row["Durata"] > 0 and row["Frequenza Cardiaca Media"] > 0:
+    # Calcola il training load usando sempre Durata × FC Media
+    if row["Durata"] > 0 and row["Frequenza Cardiaca Media"] > 0:
         return row["Durata"] * (row["Frequenza Cardiaca Media"] / 100)
     return 0
 
@@ -95,10 +94,15 @@ def performance_analysis(df):
 # UI Streamlit
 st.title("Polar Flow Analyzer – Preparatore Virtuale")
 
-if "coach_mode" in st.query_params:
-    df = load_json_from_folder("data")
-    st.success("Modalità coach: dati letti dalla cartella condivisa `/data`")
-else:
+# Caricamento automatico sempre dalla cartella data/
+df = load_json_from_folder("data")
+st.success("I dati vengono caricati dalla cartella condivisa `/data`")
+
+# Se si caricano file, vengono salvati e usati al volo
+uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar Flow", type="json", accept_multiple_files=True)
+if uploaded_files:
+    save_uploaded_files(uploaded_files, "data")
+    df = load_multiple_json_training_data(uploaded_files)
     uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar Flow", type="json", accept_multiple_files=True)
     if uploaded_files:
         save_uploaded_files(uploaded_files, "data")
@@ -124,5 +128,3 @@ if not df.empty:
     """)
 else:
     st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
-
-
