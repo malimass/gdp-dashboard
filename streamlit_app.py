@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime
 import json
+import isodate
 
 # Funzione per caricare dati da file JSON Polar Flow esportato
 @st.cache_data
@@ -13,9 +14,16 @@ def load_json_training_data(uploaded_file):
     data = json.load(uploaded_file)
     exercise = data.get("exercises", [{}])[0]
 
+    # Conversione durata da stringa ISO8601 a secondi
+    duration_iso = exercise.get("duration", "PT0S")
+    try:
+        duration_seconds = isodate.parse_duration(duration_iso).total_seconds()
+    except:
+        duration_seconds = 0
+
     record = {
         "date": pd.to_datetime(exercise.get("startTime")),
-        "Durata": exercise.get("duration", 0) / 60,  # secondi → minuti
+        "Durata": duration_seconds / 60,  # minuti
         "Distanza (km)": exercise.get("distance", 0) / 1000,  # metri → km
         "Calorie": exercise.get("kiloCalories", 0),
         "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("average", 0),
@@ -63,5 +71,6 @@ if uploaded_file:
     """)
 else:
     st.info("Carica un file JSON di allenamento esportato da Polar Flow per iniziare.")
+
 
 
