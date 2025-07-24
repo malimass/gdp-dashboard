@@ -24,27 +24,33 @@ def load_multiple_json_training_data(uploaded_files):
                 "Durata": duration_seconds / 60,
                 "Distanza (km)": exercise.get("distance", 0) / 1000,
                 "Calorie": exercise.get("kiloCalories", 0),
-                "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("average", 0),
-                "Frequenza Cardiaca Massima": exercise.get("heartRate", {}).get("maximum", 0),
+                "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("avg", 0),
+                "Frequenza Cardiaca Massima": exercise.get("heartRate", {}).get("max", 0),
                 "Sport": exercise.get("sport", "N/D")
             }
             records.append(record)
         except Exception as e:
             st.warning(f"Errore nel file {uploaded_file.name}: {e}")
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    df = df.dropna(subset=["date"]).sort_values("date")
+    return df
 
-# Calcolo carico (esempio)
+# Calcolo carico (robusto)
 def compute_training_load(row):
-    return row["Durata"] * (row["Frequenza Cardiaca Media"] / 100)
+    if row["Calorie"] > 0:
+        return row["Calorie"]
+    elif row["Durata"] > 0 and row["Frequenza Cardiaca Media"] > 0:
+        return row["Durata"] * (row["Frequenza Cardiaca Media"] / 100)
+    return 0
 
 # Analisi predittiva semplificata
 def performance_analysis(df):
     df["training_load"] = df.apply(compute_training_load, axis=1)
     df.set_index("date", inplace=True)
-    df.sort_index(inplace=True)
+    df = df.resample("D").sum()  # aggregazione giornaliera
     daily_loads = df["training_load"]
-    short_term = daily_loads.rolling(window=3).mean()
-    long_term = daily_loads.rolling(window=7).mean()
+    short_term = daily_loads.rolling(window=3, min_periods=1).mean()
+    long_term = daily_loads.rolling(window=7, min_periods=1).mean()
     acwr = short_term / long_term
     return daily_loads, acwr
 
@@ -58,20 +64,24 @@ if uploaded_files:
     st.subheader("📋 Dati Allenamento Estratti")
     st.dataframe(df)
 
-    # Calcolo training load e analisi
-    daily_loads, acwr = performance_analysis(df)
+    if not df.empty:
+        # Calcolo training load e analisi
+        daily_loads, acwr = performance_analysis(df)
 
-    st.subheader("📊 Analisi Predittiva – Coach Virtuale")
-    st.line_chart(daily_loads.rename("Carico Giornaliero"))
-    st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
+        st.subheader("📊 Analisi Predittiva – Coach Virtuale")
+        st.line_chart(daily_loads.rename("Carico Giornaliero"))
+        st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
-    st.markdown("""
-    ### Feedback:
-    - ACWR > 1.5 = rischio infortunio
-    - ACWR < 0.8 = carico troppo basso
-    """)
+        st.markdown("""
+        ### Feedback:
+        - ACWR > 1.5 = rischio infortunio
+        - ACWR < 0.8 = carico troppo basso
+        """)
+    else:
+        st.warning("Nessun dato valido da analizzare.")
 else:
     st.info("Carica uno o più file JSON di allenamento esportati da Polar Flow per iniziare.")
+
 
 
 
