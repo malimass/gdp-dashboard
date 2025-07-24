@@ -66,6 +66,17 @@ df = load_multiple_json_training_data(data_files) if data_files else pd.DataFram
 # Visualizzazione base se ci sono dati
 if not df.empty:
 
+    # Calcolo punteggio
+    def calculate_score(row):
+        score = 0
+        if row["Frequenza Cardiaca Media"] >= 100: score += 1
+        if row["Durata"] >= 60: score += 1
+        if row["Tempo in Zona 2"] >= 20: score += 1
+        if row["Velocità Media (km/h)"] >= 5.5: score += 1
+        return score
+
+    df["Punteggio"] = df.apply(calculate_score, axis=1)
+
     # Classifica Top 5 Allenamenti
     st.subheader("🥇 Top 5 Allenamenti per Punteggio")
     top5 = df.sort_values("Punteggio", ascending=False).head(5)[["Durata", "Frequenza Cardiaca Media", "Tempo in Zona 2", "Velocità Media (km/h)", "Punteggio"]]
@@ -200,6 +211,7 @@ if not df.empty:
 
 else:
     st.info("⚠️ Nessun file JSON trovato nella cartella `data/`. Carica dei file per iniziare.")
+
 
 
 
