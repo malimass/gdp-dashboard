@@ -70,11 +70,10 @@ if uploaded_files:
             lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160 else '',
             subset=["Frequenza Cardiaca Massima"]
         )
-        styled_df = styled_df.applymap(
+                styled_df = styled_df.applymap(
             lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10 else '',
             subset=["Tempo in Zona 2"]
         )
-
         st.dataframe(styled_df, use_container_width=True)
 
         # Analisi Zone Cardiache
@@ -114,6 +113,7 @@ if uploaded_files:
         else:
             st.info(f"ℹ️ Correlazione debole ({correlation:.2f}) tra velocità e tempo in Zona 2")
         # Calcolo carico settimanale e rischio infortunio
+        df["Mese"] = df["date"].dt.to_period("M").astype(str)
         st.subheader("📈 Carico Settimanale e Rischio Infortuni")
         df["Settimana"] = df["date"].dt.strftime("%Y-%U")
         carico_settimanale = df.groupby("Settimana")["Durata"].sum()
@@ -134,8 +134,31 @@ if uploaded_files:
                 st.warning(f"⚠️ ACWR = {latest_acwr:.2f} → Carico troppo basso, potenziale calo di performance.")
             else:
                 st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
+
+        # Calcolo carico mensile e ACWR mensile
+        st.subheader("📆 Carico Mensile e ACWR")
+        carico_mensile = df.groupby("Mese")["Durata"].sum()
+        st.bar_chart(carico_mensile)
+
+        carico_mensile_chronic = carico_mensile.rolling(window=3, min_periods=1).mean()
+        carico_mensile_acute = carico_mensile.rolling(window=1).mean()
+        acwr_mensile = (carico_mensile_acute / carico_mensile_chronic).dropna()
+        st.line_chart(acwr_mensile.rename("ACWR Mensile"))
+
+        latest_acwr_mensile = acwr_mensile.iloc[-1] if not acwr_mensile.empty else None
+        if latest_acwr_mensile:
+            if latest_acwr_mensile > 1.5:
+                st.error(f"🚨 ACWR Mensile = {latest_acwr_mensile:.2f} → Alto rischio infortunio mensile.")
+            elif latest_acwr_mensile < 0.8:
+                st.warning(f"⚠️ ACWR Mensile = {latest_acwr_mensile:.2f} → Carico troppo basso mensile.")
+            else:
+                st.success(f"✅ ACWR Mensile = {latest_acwr_mensile:.2f} → Buon equilibrio mensile.")
+
+else:
+                st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
 else:
     st.info("Carica almeno un file JSON per iniziare l'analisi.")
+
 
 
 
