@@ -10,7 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # Funzione per estrarre dati da link condiviso Polar (scraping HTML limitato)
-def extract_data_from_polar_link(https://flow.polar.com/shared2/7e97c154516c580b2a4278763df0b9f0):
+def extract_data_from_polar_link(link):
     resp = requests.get(link)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
