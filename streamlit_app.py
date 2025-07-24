@@ -6,74 +6,84 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime
 from io import BytesIO
-from urllib.parse import urlparse
+import requests
+from bs4 import BeautifulSoup
 
-# Simulazione funzione di estrazione da Polar Flow (da implementare con scraping o API privato se disponibile)
+# Funzione per estrarre dati da link condiviso Polar (scraping HTML limitato)
 def extract_data_from_polar_link(link):
-    # ATTENZIONE: Polar non fornisce API pubbliche per link condivisi.
-    # Qui si simula l'importazione di dati esportati (es. CSV/TCX scaricato dall'utente)
-    # Per l'esempio, carichiamo un file CSV fittizio
-    df = pd.read_csv("sample_polar_data.csv", parse_dates=["datetime"])
-    df["date"] = df["datetime"].dt.date
+    resp = requests.get(link)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Esempio semplice di estrazione: cerchiamo dati nella pagina HTML condivisa
+    summary_box = soup.select_one("div.shared-exercise-header")
+    metrics = soup.select("div.shared-exercise-basic-data-row")
+
+    try:
+        date_text = summary_box.select_one("h2").text.strip()
+    except:
+        date_text = ""
+
+    data = {"date": date_text}
+    for metric in metrics:
+        label = metric.select_one(".label").text.strip()
+        value = metric.select_one(".value").text.strip()
+        data[label] = value
+
+    # Converti a DataFrame
+    df = pd.DataFrame([data])
+    df["date"] = pd.to_datetime(df["date"], errors='coerce')
     return df
 
-# Calcolo indice personalizzato di carico (es. TRIMP semplificato)
+# Calcolo carico (esempio semplificato)
 def compute_training_load(row):
-    return row["duration_min"] * row["intensity"]  # esempio: durata * intensità relativa
+    if "Durata" in row and isinstance(row["Durata"], str):
+        t = row["Durata"].split(":")
+        duration_min = int(t[0]) * 60 + int(t[1])
+    else:
+        duration_min = 0
+    return duration_min * 1  # intensità arbitraria
 
-# Analisi predittiva semplificata (placeholder)
+# Analisi predittiva semplificata
+
 def performance_analysis(df):
-    # esempio: calo prestazioni, FC a riposo, rapporto carico cronico/acuto
-    daily_loads = df.groupby("date")["training_load"].sum()
+    df["training_load"] = df.apply(compute_training_load, axis=1)
+    df.set_index("date", inplace=True)
+    daily_loads = df["training_load"]
     short_term = daily_loads.rolling(window=3).mean()
     long_term = daily_loads.rolling(window=7).mean()
     acwr = short_term / long_term
     return daily_loads, acwr
 
-# Sidebar - Caricamento Link
+# UI Streamlit
 st.sidebar.title("Carica il link Polar Flow")
 link_input = st.sidebar.text_input("Incolla qui il link condiviso", "https://flow.polar.com/shared2/7e97c154516c580b2a4278763df0b9f0")
 
 if link_input:
     st.title("Polar Flow Analyzer – Preparatore Virtuale")
+    st.info("I dati vengono estratti automaticamente dalla pagina Polar Flow condivisa")
 
-    # Estrarre i dati (in realtà dovresti caricare da file esportato)
-    st.info("⚠️ I link Polar condivisi non permettono accesso diretto ai dati. Caricamento simulato da file CSV.")
     df = extract_data_from_polar_link(link_input)
+    st.write("## Dati Allenamento Estratti")
+    st.dataframe(df)
 
-    # Calcola metriche
-    df["duration_min"] = df["duration_sec"] / 60
-    df["training_load"] = df.apply(compute_training_load, axis=1)
+    # Calcolo training load e analisi
+    daily_loads, acwr = performance_analysis(df)
 
-    # Sezione calendario
-    st.subheader("Calendario Allenamenti")
-    dates = df["date"].unique()
-    selected_date = st.selectbox("Seleziona una data", sorted(dates, reverse=True))
-
-    daily_data = df[df["date"] == selected_date]
-    st.write(f"## Dettagli allenamento del {selected_date}")
-    st.dataframe(daily_data)
-
-    # Grafici del giorno selezionato
-    fig, ax = plt.subplots()
-    ax.plot(daily_data["datetime"], daily_data["heart_rate"], label="Frequenza Cardiaca")
-    ax.set_ylabel("bpm")
-    ax.set_xlabel("Tempo")
-    st.pyplot(fig)
-
-    # Sezione Analisi Predittiva (tipo "coach virtuale")
-    st.subheader("Analisi Predittiva: Coach Virtuale")
-    load_series, acwr_series = performance_analysis(df)
-
-    st.line_chart(load_series.rename("Training Load Giornaliero"))
-    st.line_chart(acwr_series.rename("Rapporto Carico Acuto/Cronico (ACWR)"))
+    st.subheader("Analisi Predittiva – Coach Virtuale")
+    st.line_chart(daily_loads.rename("Carico Giornaliero"))
+    st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
     st.markdown("""
-    ### Feedback Coach:
-    - Se ACWR > 1.5: Rischio infortunio alto – considera recupero.
-    - Se ACWR < 0.8: Carico insufficiente – attenzione a sotto-allenamento.
-    - Trend decrescente del passo medio? ⚠️ Possibile accumulo di fatica.
+    ### Feedback:
+    - ACWR > 1.5 = rischio infortunio
+    - ACWR < 0.8 = carico troppo basso
     """)
+
+else:
+    st.title("Benvenuto nella tua App di Analisi Allenamenti Polar")
+    st.markdown("Carica un link condiviso da Polar Flow per analizzare i tuoi dati di allenamento.")
+
 
 else:
     st.title("Benvenuto nella tua App di Analisi Allenamenti Polar")
