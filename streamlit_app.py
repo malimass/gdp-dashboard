@@ -65,8 +65,15 @@ if uploaded_files:
 
     if not df.empty:
         st.subheader("📅 Allenamenti Caricati")
-        styled_df = df.style.applymap(lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160, subset=["Frequenza Cardiaca Massima"])
-        styled_df = styled_df.applymap(lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10, subset=["Tempo in Zona 2"])
+        styled_df = df.style
+        styled_df = styled_df.applymap(
+            lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160 else '',
+            subset=["Frequenza Cardiaca Massima"]
+        )
+                styled_df = styled_df.applymap(
+            lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10 else '',
+            subset=["Tempo in Zona 2"]
+        )
         st.dataframe(styled_df, use_container_width=True)
 
         # Analisi Zone Cardiache
@@ -105,8 +112,30 @@ if uploaded_files:
             st.warning(f"⚠️ Correlazione negativa ({correlation:.2f}): più vai veloce, meno lavori in zona aerobica")
         else:
             st.info(f"ℹ️ Correlazione debole ({correlation:.2f}) tra velocità e tempo in Zona 2")
+        # Calcolo carico settimanale e rischio infortunio
+        st.subheader("📈 Carico Settimanale e Rischio Infortuni")
+        df["Settimana"] = df["date"].dt.strftime("%Y-%U")
+        carico_settimanale = df.groupby("Settimana")["Durata"].sum()
+        st.line_chart(carico_settimanale)
+
+        # Analisi rischio infortunio con Acute:Chronic Workload Ratio (ACWR)
+        carico_medio_chronic = carico_settimanale.rolling(window=4, min_periods=1).mean()
+        carico_medio_acute = carico_settimanale.rolling(window=1).mean()
+        acwr = (carico_medio_acute / carico_medio_chronic).dropna()
+
+        st.line_chart(acwr.rename("ACWR"))
+        latest_acwr = acwr.iloc[-1] if not acwr.empty else None
+
+        if latest_acwr:
+            if latest_acwr > 1.5:
+                st.error(f"🚨 ACWR = {latest_acwr:.2f} → Alto rischio infortunio. Riduci il carico.")
+            elif latest_acwr < 0.8:
+                st.warning(f"⚠️ ACWR = {latest_acwr:.2f} → Carico troppo basso, potenziale calo di performance.")
+            else:
+                st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
 else:
     st.info("Carica almeno un file JSON per iniziare l'analisi.")
+
 
 
 
