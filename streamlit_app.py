@@ -9,6 +9,14 @@ import json
 import isodate
 import os
 
+# Funzione per salvare i file caricati nella cartella data/
+def save_uploaded_files(uploaded_files, folder="data"):
+    os.makedirs(folder, exist_ok=True)
+    for uploaded_file in uploaded_files:
+        file_path = os.path.join(folder, uploaded_file.name)
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
 # Funzione per caricare più file JSON di allenamento da caricamento manuale
 @st.cache_data
 def load_multiple_json_training_data(uploaded_files):
@@ -92,7 +100,11 @@ if "coach_mode" in st.query_params:
     st.success("Modalità coach: dati letti dalla cartella condivisa `/data`")
 else:
     uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar Flow", type="json", accept_multiple_files=True)
-    df = load_multiple_json_training_data(uploaded_files) if uploaded_files else pd.DataFrame()
+    if uploaded_files:
+        save_uploaded_files(uploaded_files, "data")
+        df = load_multiple_json_training_data(uploaded_files)
+    else:
+        df = pd.DataFrame()
 
 if not df.empty:
     st.subheader("📋 Dati Allenamento Estratti")
