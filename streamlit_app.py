@@ -89,7 +89,8 @@ if not df.empty:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🔍 Analisi personalizzata")
-    giorno_scelto = st.sidebar.date_input("Seleziona una data", df.index[-1].date())
+    giorno_default = df.index[-1] if isinstance(df.index, pd.DatetimeIndex) else pd.to_datetime(df["date"].iloc[-1])
+giorno_scelto = st.sidebar.date_input("Seleziona una data", giorno_default.date())
 
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_fc
     df["Efficienza"] = df["Velocità Media (km/h)"] / df["Frequenza Cardiaca Media"]
@@ -160,3 +161,4 @@ if not df.empty:
             st.success("✅ Rischio basso – allenamento sostenibile.")
 else:
     st.info("📥 Carica almeno un file JSON di allenamento per iniziare.")
+
