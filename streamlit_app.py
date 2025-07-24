@@ -55,13 +55,16 @@ def load_multiple_json_training_data(uploaded_files):
 st.set_page_config(page_title="Polar Training Dashboard", layout="wide")
 st.title("📊 Polar Training Analyzer")
 
-# Caricamento file JSON
-uploaded_files = st.file_uploader("📁 Carica uno o più file JSON esportati da Polar Flow", type="json", accept_multiple_files=True)
+# Caricamento automatico dei file dalla cartella "data"
+file_names = [f for f in os.listdir("data") if f.endswith(".json")]
+uploaded_files = [open(os.path.join("data", f), "rb") for f in file_names]
 
-# Salvataggio e caricamento dati
+# Caricamento dati solo se ci sono file salvati
 if uploaded_files:
-    save_uploaded_files(uploaded_files)
     df = load_multiple_json_training_data(uploaded_files)
+else:
+    st.info("Carica almeno un file JSON per iniziare l'analisi.")
+
 
     if not df.empty:
         st.subheader("📅 Allenamenti Caricati")
