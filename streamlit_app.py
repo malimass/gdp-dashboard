@@ -60,10 +60,19 @@ file_names = [f for f in os.listdir("data") if f.endswith(".json")]
 uploaded_files = [open(os.path.join("data", f), "rb") for f in file_names]
 
 # Caricamento dati solo se ci sono file salvati
+# Upload file manuale
+uploaded_files = st.file_uploader("📁 Carica uno o più file JSON esportati da Polar Flow", type="json", accept_multiple_files=True)
+
+# Salvataggio file caricati nella cartella data/
 if uploaded_files:
-    df = load_multiple_json_training_data(uploaded_files)
-else:
-    st.info("Carica almeno un file JSON per iniziare l'analisi.")
+    save_uploaded_files(uploaded_files)
+    st.success("File salvati. Ricarica la pagina per visualizzare i dati salvati.")
+
+# Lettura automatica di tutti i file dalla cartella 'data'
+file_names = [f for f in os.listdir("data") if f.endswith(".json")]
+data_files = [open(os.path.join("data", f), "rb") for f in file_names]
+df = load_multiple_json_training_data(data_files) if data_files else pd.DataFrame()
+
 
 
     if not df.empty:
