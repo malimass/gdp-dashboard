@@ -29,7 +29,18 @@ def load_multiple_json_training_data(uploaded_files):
             duration_seconds = isodate.parse_duration(duration_iso).total_seconds()
 
             record = {
-                "date": pd.to_datetime(exercise.get("startTime")),
+                    "date": pd.to_datetime(exercise.get("startTime")),
+                    "Durata": duration_seconds / 60,
+                    "Distanza (km)": exercise.get("distance", 0) / 1000,
+                    "Calorie": exercise.get("kiloCalories", 0),
+                    "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("avg", 0),
+                    "Frequenza Cardiaca Massima": exercise.get("heartRate", {}).get("max", 0),
+                    "Velocità Media (km/h)": exercise.get("speed", {}).get("avg", 0),
+                    "Velocità Massima (km/h)": exercise.get("speed", {}).get("max", 0),
+                    "Tempo in Zona 1": isodate.parse_duration(next((z.get("inZone", "PT0S") for z in exercise.get("zones", {}).get("heart_rate", []) if z.get("zoneIndex") == 1), "PT0S")).total_seconds() / 60,
+                    "Tempo in Zona 2": isodate.parse_duration(next((z.get("inZone", "PT0S") for z in exercise.get("zones", {}).get("heart_rate", []) if z.get("zoneIndex") == 2), "PT0S")).total_seconds() / 60,
+                    "Tempo in Zona 3": isodate.parse_duration(next((z.get("inZone", "PT0S") for z in exercise.get("zones", {}).get("heart_rate", []) if z.get("zoneIndex") == 3), "PT0S")).total_seconds() / 60,
+                    "Sport": exercise.get("sport", "N/D")
                 "Durata": duration_seconds / 60,
                 "Distanza (km)": exercise.get("distance", 0) / 1000,
                 "Calorie": exercise.get("kiloCalories", 0),
@@ -127,7 +138,9 @@ if not df.empty:
     - **Calorie**: stima delle kcal bruciate
     - **Sport**: attività eseguita (es. running, cycling)
     """)
-    st.dataframe(df)
+        styled_df = df.style.applymap(lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160, subset=["Frequenza Cardiaca Massima"])
+    styled_df = styled_df.applymap(lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10, subset=["Tempo in Zona 2"])
+    st.dataframe(styled_df)
 
     # Grafico zone cardiache
     st.subheader("🫀 Distribuzione Zone Cardiache (Z1–Z3)")
@@ -204,6 +217,7 @@ if not df.empty:
 
 else:
     st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
+
 
 
 
