@@ -67,73 +67,65 @@ def load_multiple_json_training_data(uploaded_files):
     return df
 
 # Impostazioni base dell'app
-st.set_page_config(page_title="Polar Training Dashboard", layout="wide")
-st.title("🤖 Coach Virtuale con ML – Polar Training Dashboard")
+st.set_page_config(page_title="Coach Virtuale con ML", layout="wide")
+st.title("🤖 Coach Virtuale – Consigli Predittivi Personalizzati")
 
-# File manager: carica ed elimina file
-st.sidebar.header("📂 Gestione File")
-with st.sidebar:
-    uploaded_files = st.file_uploader("Carica file JSON", type="json", accept_multiple_files=True)
-    if uploaded_files:
-        save_uploaded_files(uploaded_files)
-        st.success("File salvati correttamente. Ricaricare la pagina per aggiornare i dati.")
+# File manager
+st.sidebar.header("📂 Carica i tuoi allenamenti")
+uploaded_files = st.sidebar.file_uploader("File JSON da Polar Flow", type="json", accept_multiple_files=True)
+if uploaded_files:
+    save_uploaded_files(uploaded_files)
+    st.sidebar.success("File salvati correttamente. Ricarica la pagina per aggiornare.")
 
-    existing_files = [f for f in os.listdir("data") if f.endswith(".json")]
-    file_to_delete = st.selectbox("Seleziona file da eliminare", options=["" ] + existing_files)
-    if file_to_delete and st.button("Elimina File"):
-        delete_file(file_to_delete)
-        st.success(f"File '{file_to_delete}' eliminato. Ricaricare la pagina per aggiornare i dati.")
-
-# Caricamento automatico dei file dalla cartella 'data'
+# Caricamento automatico
 file_names = [f for f in os.listdir("data") if f.endswith(".json")]
 data_files = [open(os.path.join("data", f), "rb") for f in file_names]
 df = load_multiple_json_training_data(data_files) if data_files else pd.DataFrame()
 
-# Se ci sono dati, visualizza tutto
 if not df.empty:
-    eta = st.sidebar.slider("Inserisci la tua età", 18, 80, 47)
+    eta = st.sidebar.slider("Età atleta", 18, 80, 47)
     fc_max_teorica = 220 - eta
-    soglia_critica = 0.9 * fc_max_teorica
+    soglia_fc = 0.9 * fc_max_teorica
 
-    st.subheader("📋 Dati Allenamenti")
-    st.dataframe(df, use_container_width=True)
-
-    df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
+    df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_fc
     df["Efficienza"] = df["Velocità Media (km/h)"] / df["Frequenza Cardiaca Media"]
     df["Load"] = df["Durata (min)"] * df["Frequenza Cardiaca Media"]
     df.set_index("date", inplace=True)
-
-    # ACWR
     df["Load_7d"] = df["Load"].rolling("7D").mean()
     df["Load_28d"] = df["Load"].rolling("28D").mean()
     df["ACWR"] = df["Load_7d"] / df["Load_28d"]
     df = df.dropna()
 
-    st.subheader("🧠 Analisi Predittiva con Random Forest")
+    st.subheader("📊 Analisi Allenamenti e Rischio Predittivo")
     features = df[["Durata (min)", "Distanza (km)", "Frequenza Cardiaca Media", "Efficienza", "ACWR"]]
     labels = df["Supera FC Max"].astype(int)
+
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(features)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_scaled, labels)
 
-    # Salvataggio modello e scaler
-    joblib.dump(model, MODEL_PATH)
-    joblib.dump(scaler, SCALER_PATH)
+    df["Probabilità Infortunio"] = model.predict_proba(X_scaled)[:,1]
 
-    predictions = model.predict(X_scaled)
-    df["Rischio Infortunio ML"] = predictions
+    st.line_chart(df["Probabilità Infortunio"], use_container_width=True)
 
-    st.line_chart(df["Rischio Infortunio ML"], use_container_width=True)
-    st.success("✅ Modello addestrato e salvato correttamente.")
+    st.subheader("🧠 Consigli Personalizzati")
+    ultimi = df.iloc[-1]
+    consigli = []
+    if ultimi["Probabilità Infortunio"] > 0.7:
+        consigli.append("⚠️ Alto rischio infortunio – considera un giorno di recupero o scarico.")
+    elif ultimi["Probabilità Infortunio"] > 0.4:
+        consigli.append("🔁 Attenzione: carico borderline. Idratazione, stretching e sonno adeguato consigliati.")
+    else:
+        consigli.append("✅ Ottimo stato di forma. Puoi pianificare un carico medio/alto.")
 
-    st.subheader("📈 Metriche Cardio")
-    st.line_chart(df[["Frequenza Cardiaca Media", "Frequenza Cardiaca Massima"]])
-    st.line_chart(df[["ACWR", "Efficienza"]])
+    if ultimi["ACWR"] > 1.5:
+        consigli.append("📈 ACWR elevato – riduci intensità nei prossimi 2 giorni.")
+    elif ultimi["ACWR"] < 0.8:
+        consigli.append("📉 Carico insufficiente – potresti inserire una sessione più lunga o intensa.")
 
-    st.subheader("📊 Classificazione dettagliata")
-    st.code(classification_report(labels, predictions), language="text")
-
+    for c in consigli:
+        st.info(c)
 else:
-    st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
+    st.info("📥 Carica almeno un file JSON di allenamento per iniziare.")
 
