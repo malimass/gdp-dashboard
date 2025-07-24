@@ -86,7 +86,7 @@ if not df.empty:
     soglia_critica = 0.9 * fc_max_teorica
 
     st.subheader("📋 Dati Allenamenti")
-    st.dataframe(df)
+    st.dataframe(df, use_container_width=True)
 
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
     df["date"] = pd.to_datetime(df["date"])
@@ -107,7 +107,7 @@ if not df.empty:
     for bar in bars:
         yval = bar.get_height()
         ax_rischio.text(bar.get_x() + bar.get_width()/2, yval + 0.1, int(yval), ha='center', va='bottom', fontsize=8)
-    st.pyplot(fig_rischio)
+    st.pyplot(fig_rischio, use_container_width=True)
 
     st.subheader("📈 Andamento della Frequenza Cardiaca Massima nel tempo")
     fig_fc, ax_fc = plt.subplots(figsize=(10, 4))
@@ -116,7 +116,7 @@ if not df.empty:
     ax_fc.set_xlabel("Data")
     ax_fc.set_title("📊 Frequenza Cardiaca Massima nel tempo")
     ax_fc.grid(True, linestyle='--', alpha=0.5)
-    st.pyplot(fig_fc)
+    st.pyplot(fig_fc, use_container_width=True)
 
     st.subheader("📊 Previsione Chilometraggio")
     pred_sett = weekly["Distanza (km)"].rolling(window=3).mean().iloc[-1]
