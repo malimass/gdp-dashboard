@@ -157,7 +157,3 @@ else:
     st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
 
 
-else:
-    st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
-
-
