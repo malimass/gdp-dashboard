@@ -88,22 +88,21 @@ if not df.empty:
 
     st.subheader("📉 Evoluzione del Rischio Infortuni")
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
-    df["date"] = pd.to_datetime(df.index)
+    df["date"] = pd.to_datetime(df["date"])
     df.set_index("date", inplace=True)
 
-    if pd.api.types.is_datetime64_any_dtype(df.index):
-        rischio_settimanale = df["Supera FC Max"].resample("W").sum()
-        fig_rischio, ax_rischio = plt.subplots(figsize=(10, 4))
-        bars = ax_rischio.bar(rischio_settimanale.index.strftime('%d %b'), rischio_settimanale, color="crimson")
-        ax_rischio.set_ylabel("Allenamenti a rischio")
-        ax_rischio.set_xlabel("Settimane")
-        ax_rischio.set_title("🧠 Allenamenti sopra soglia FC Max per settimana")
-        ax_rischio.set_ylim(0, max(rischio_settimanale.max() + 1, 1))
-        ax_rischio.grid(True, linestyle='--', alpha=0.5)
-        for bar in bars:
-            yval = bar.get_height()
-            ax_rischio.text(bar.get_x() + bar.get_width()/2, yval + 0.1, int(yval), ha='center', va='bottom', fontsize=8)
-        st.pyplot(fig_rischio)
+    rischio_settimanale = df.resample("W")["Supera FC Max"].sum()
+    fig_rischio, ax_rischio = plt.subplots(figsize=(10, 4))
+    bars = ax_rischio.bar(rischio_settimanale.index.strftime('%d %b'), rischio_settimanale, color="crimson")
+    ax_rischio.set_ylabel("Allenamenti a rischio")
+    ax_rischio.set_xlabel("Settimane")
+    ax_rischio.set_title("🧠 Allenamenti sopra soglia FC Max per settimana")
+    ax_rischio.set_ylim(0, max(rischio_settimanale.max() + 1, 1))
+    ax_rischio.grid(True, linestyle='--', alpha=0.5)
+    for bar in bars:
+        yval = bar.get_height()
+        ax_rischio.text(bar.get_x() + bar.get_width()/2, yval + 0.1, int(yval), ha='center', va='bottom', fontsize=8)
+    st.pyplot(fig_rischio)
 
     st.subheader("📈 Andamento della Frequenza Cardiaca Massima nel tempo")
     fig_fc, ax_fc = plt.subplots(figsize=(10, 4))
@@ -116,6 +115,8 @@ if not df.empty:
 
 else:
     st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
+
+
 
 
 
