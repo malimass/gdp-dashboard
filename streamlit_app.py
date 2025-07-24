@@ -87,6 +87,10 @@ if not df.empty:
     fc_max_teorica = 220 - eta
     soglia_fc = 0.9 * fc_max_teorica
 
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔍 Analisi personalizzata")
+    giorno_scelto = st.sidebar.date_input("Seleziona una data", df.index[-1].date())
+
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_fc
     df["Efficienza"] = df["Velocità Media (km/h)"] / df["Frequenza Cardiaca Media"]
     df["Load"] = df["Durata (min)"] * df["Frequenza Cardiaca Media"]
@@ -106,26 +110,53 @@ if not df.empty:
     model.fit(X_scaled, labels)
 
     df["Probabilità Infortunio"] = model.predict_proba(X_scaled)[:,1]
-
     st.line_chart(df["Probabilità Infortunio"], use_container_width=True)
 
-    st.subheader("🧠 Consigli Personalizzati")
-    ultimi = df.iloc[-1]
-    consigli = []
-    if ultimi["Probabilità Infortunio"] > 0.7:
-        consigli.append("⚠️ Alto rischio infortunio – considera un giorno di recupero o scarico.")
-    elif ultimi["Probabilità Infortunio"] > 0.4:
-        consigli.append("🔁 Attenzione: carico borderline. Idratazione, stretching e sonno adeguato consigliati.")
+    # Interazione utente: feedback per giorno selezionato
+    if pd.to_datetime(giorno_scelto) in df.index:
+        st.subheader(f"🧠 Consigli per il {giorno_scelto}")
+        dati = df.loc[pd.to_datetime(giorno_scelto)]
+        consigli = []
+        if dati["Probabilità Infortunio"] > 0.7:
+            consigli.append("⚠️ Alto rischio infortunio – considera un giorno di recupero o scarico.")
+        elif dati["Probabilità Infortunio"] > 0.4:
+            consigli.append("🔁 Attenzione: carico borderline. Idratazione, stretching e sonno adeguato consigliati.")
+        else:
+            consigli.append("✅ Ottimo stato di forma. Puoi pianificare un carico medio/alto.")
+
+        if dati["ACWR"] > 1.5:
+            consigli.append("📈 ACWR elevato – riduci intensità nei prossimi 2 giorni.")
+        elif dati["ACWR"] < 0.8:
+            consigli.append("📉 Carico insufficiente – potresti inserire una sessione più lunga o intensa.")
+
+        for c in consigli:
+            st.info(c)
     else:
-        consigli.append("✅ Ottimo stato di forma. Puoi pianificare un carico medio/alto.")
+        st.warning("Nessun dato disponibile per la data selezionata.")
 
-    if ultimi["ACWR"] > 1.5:
-        consigli.append("📈 ACWR elevato – riduci intensità nei prossimi 2 giorni.")
-    elif ultimi["ACWR"] < 0.8:
-        consigli.append("📉 Carico insufficiente – potresti inserire una sessione più lunga o intensa.")
+    # Interazione aggiuntiva – Simulazione allenamento manuale
+    st.markdown("---")
+    st.subheader("📌 Simula un nuovo allenamento")
+    with st.form("simulatore"):
+        durata_sim = st.number_input("Durata (minuti)", min_value=10, max_value=300, value=60)
+        distanza_sim = st.number_input("Distanza (km)", min_value=1.0, max_value=100.0, value=10.0)
+        fc_avg_sim = st.number_input("Frequenza Cardiaca Media", min_value=60, max_value=220, value=130)
+        eff_sim = st.number_input("Efficienza (velocità / FC)", min_value=0.01, max_value=1.0, value=0.05)
+        acwr_sim = st.number_input("ACWR stimato", min_value=0.1, max_value=3.0, value=1.0)
+        submitted = st.form_submit_button("Valuta Rischio")
 
-    for c in consigli:
-        st.info(c)
+    if submitted:
+        input_data = pd.DataFrame([[durata_sim, distanza_sim, fc_avg_sim, eff_sim, acwr_sim]],
+                                   columns=["Durata (min)", "Distanza (km)", "Frequenza Cardiaca Media", "Efficienza", "ACWR"])
+        input_scaled = scaler.transform(input_data)
+        prob = model.predict_proba(input_scaled)[0,1]
+
+        st.metric(label="Probabilità di Infortunio Stimata", value=f"{prob*100:.1f}%")
+        if prob > 0.7:
+            st.error("⚠️ Alto rischio – ridurre l'intensità o pianificare recupero.")
+        elif prob > 0.4:
+            st.warning("⚠️ Moderato rischio – valuta stretching, riposo, sonno.")
+        else:
+            st.success("✅ Rischio basso – allenamento sostenibile.")
 else:
     st.info("📥 Carica almeno un file JSON di allenamento per iniziare.")
-
