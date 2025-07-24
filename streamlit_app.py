@@ -170,6 +170,6 @@ if uploaded_files:
         st.bar_chart(punteggi_settimana.rename("Punteggio Medio per Settimana"))
 
        else:
-          st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
+           st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
 else:
     st.info("Carica almeno un file JSON per iniziare l'analisi.")
