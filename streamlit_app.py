@@ -51,20 +51,20 @@ def load_multiple_json_training_data(uploaded_files):
 
 
 
-# Interfaccia Streamlit
-st.set_page_config(page_title="Polar Training Dashboard", layout="wide")
-st.title("📊 Polar Training Analyzer")
+  # Interfaccia Streamlit
+  st.set_page_config(page_title="Polar Training Dashboard", layout="wide")
+  st.title("📊 Polar Training Analyzer")
 
-# Caricamento automatico dei file dalla cartella "data"
-file_names = [f for f in os.listdir("data") if f.endswith(".json")]
-uploaded_files = [open(os.path.join("data", f), "rb") for f in file_names]
+  # Caricamento automatico dei file dalla cartella "data"
+  file_names = [f for f in os.listdir("data") if f.endswith(".json")]
+  uploaded_files = [open(os.path.join("data", f), "rb") for f in file_names]
 
-# Caricamento dati solo se ci sono file salvati
-# Upload file manuale
-uploaded_files = st.file_uploader("📁 Carica uno o più file JSON esportati da Polar Flow", type="json", accept_multiple_files=True)
+  # Caricamento dati solo se ci sono file salvati
+  # Upload file manuale
+  uploaded_files = st.file_uploader("📁 Carica uno o più file JSON esportati da Polar Flow", type="json", accept_multiple_files=True)
 
-# Salvataggio file caricati nella cartella data/
-if uploaded_files:
+  # Salvataggio file caricati nella cartella data/
+  if uploaded_files:
     save_uploaded_files(uploaded_files)
     st.success("File salvati. Ricarica la pagina per visualizzare i dati salvati.")
 
