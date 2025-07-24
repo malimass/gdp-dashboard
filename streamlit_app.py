@@ -65,11 +65,27 @@ df = load_multiple_json_training_data(data_files) if data_files else pd.DataFram
 
 # Visualizzazione base se ci sono dati
 if not df.empty:
+
+    # Classifica Top 5 Allenamenti
+    st.subheader("🥇 Top 5 Allenamenti per Punteggio")
+    top5 = df.sort_values("Punteggio", ascending=False).head(5)[["Durata", "Frequenza Cardiaca Media", "Tempo in Zona 2", "Velocità Media (km/h)", "Punteggio"]]
+    st.dataframe(top5.style.format({"Durata": "{:.1f}", "Frequenza Cardiaca Media": "{:.0f}", "Tempo in Zona 2": "{:.1f}", "Velocità Media (km/h)": "{:.2f}", "Punteggio": "{:.0f}"}))
     st.subheader("📅 Sessioni di Allenamento")
     st.dataframe(df)
 
     st.subheader("📈 Grafico: FC Media e Durata")
-    st.line_chart(df.set_index("date")[["Frequenza Cardiaca Media", "Durata"]])
+    fig, ax = plt.subplots()
+    ax.plot(df.index, df["Frequenza Cardiaca Media"], label='FC Media (bpm)', color='crimson', marker='o')
+    ax.set_ylabel("FC Media (bpm)", color='crimson')
+    ax.set_xlabel("Data")
+    ax2 = ax.twinx()
+    ax2.plot(df.index, df["Durata"], label='Durata (min)', color='blue', marker='x')
+    ax2.set_ylabel("Durata (min)", color='blue')
+    fig.autofmt_xdate()
+    ax.set_title("Frequenza Cardiaca Media e Durata Allenamento")
+    ax.legend(loc='upper left')
+    ax2.legend(loc='upper right')
+    st.pyplot(fig)
 
     st.subheader("⚙️ Analisi Approfondita")
 
@@ -117,7 +133,14 @@ if not df.empty:
     # Analisi zona cardiaca
     st.subheader("🧠 Tempo in Zona Cardiaca (minuti)")
     zona_df = df[["Tempo in Zona 1", "Tempo in Zona 2", "Tempo in Zona 3"]]
-    st.area_chart(zona_df)
+    fig, ax = plt.subplots()
+    zona_df.plot.area(ax=ax, stacked=True, colormap='Set2')
+    ax.set_ylabel("Minuti")
+    ax.set_xlabel("Data")
+    ax.set_title("Tempo Trascorso nelle Zone Cardiache")
+    ax.legend(title="Zona FC")
+    ax.grid(True)
+    st.pyplot(fig)
 
     # Confronto Velocità Media vs Tempo in Zona 2
     st.subheader("📉 Confronto: Velocità Media vs Tempo in Zona 2")
@@ -177,6 +200,7 @@ if not df.empty:
 
 else:
     st.info("⚠️ Nessun file JSON trovato nella cartella `data/`. Carica dei file per iniziare.")
+
 
 
 
