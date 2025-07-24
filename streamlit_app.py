@@ -33,7 +33,6 @@ def load_multiple_json_training_data(uploaded_files):
             exercise = data.get("exercises", [{}])[0]
             duration_iso = exercise.get("duration", "PT0S")
             duration_seconds = isodate.parse_duration(duration_iso).total_seconds()
-
             distanza = round(exercise.get("distance", 0) / 1000, 2)
 
             record = {
@@ -80,18 +79,24 @@ file_names = [f for f in os.listdir("data") if f.endswith(".json")]
 data_files = [open(os.path.join("data", f), "rb") for f in file_names]
 df = load_multiple_json_training_data(data_files) if data_files else pd.DataFrame()
 
-# Se ci sono dati, calcola soglia FC max e crea grafici
+# Se ci sono dati, visualizza tutto
 if not df.empty:
     eta = st.sidebar.slider("Inserisci la tua età", 18, 80, 47)
     fc_max_teorica = 220 - eta
     soglia_critica = 0.9 * fc_max_teorica
 
-    st.subheader("📉 Evoluzione del Rischio Infortuni")
+    st.subheader("📋 Dati Allenamenti")
+    st.dataframe(df)
+
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
     df["date"] = pd.to_datetime(df["date"])
     df.set_index("date", inplace=True)
 
-    rischio_settimanale = df.resample("W")["Supera FC Max"].sum()
+    weekly = df.resample("W").sum(numeric_only=True)
+    monthly = df.resample("M").sum(numeric_only=True)
+
+    st.subheader("📉 Evoluzione del Rischio Infortuni")
+    rischio_settimanale = df["Supera FC Max"].resample("W").sum()
     fig_rischio, ax_rischio = plt.subplots(figsize=(10, 4))
     bars = ax_rischio.bar(rischio_settimanale.index.strftime('%d %b'), rischio_settimanale, color="crimson")
     ax_rischio.set_ylabel("Allenamenti a rischio")
@@ -113,12 +118,11 @@ if not df.empty:
     ax_fc.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig_fc)
 
+    st.subheader("📊 Previsione Chilometraggio")
+    pred_sett = weekly["Distanza (km)"].rolling(window=3).mean().iloc[-1]
+    pred_mese = monthly["Distanza (km)"].rolling(window=2).mean().iloc[-1]
+    st.info(f"📅 Chilometri previsti prossima settimana: {pred_sett:.1f} km")
+    st.info(f"🗓️ Chilometri previsti prossimo mese: {pred_mese:.1f} km")
+
 else:
     st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
-
-
-
-
-
-
-
