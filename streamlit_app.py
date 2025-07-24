@@ -110,16 +110,13 @@ if uploaded_files:
 if not df.empty:
     st.subheader("📋 Dati Allenamento Estratti")
     st.markdown("""
-**Colonne principali:**
-- **Durata**: in minuti
-- **Distanza (km)**: distanza totale della sessione
-- **FC Media / Massima**: valori della frequenza cardiaca (in bpm)
-- **Calorie**: stima delle kcal bruciate
-- **Velocità Media / Max**: km/h durante la sessione
-- **Tempo in Zona 1–3**: minuti trascorsi in zone cardiache
-- **Sport**: attività eseguita (es. running, cycling)
-""")
-
+    **Colonne principali:**
+    - **Durata**: in minuti
+    - **Distanza (km)**: distanza totale della sessione
+    - **FC Media / Massima**: valori della frequenza cardiaca (in bpm)
+    - **Calorie**: stima delle kcal bruciate
+    - **Sport**: attività eseguita (es. running, cycling)
+    """)
     st.dataframe(df)
 
     # Calcolo training load e analisi
@@ -158,6 +155,7 @@ if not df.empty:
 
 else:
     st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
+
 
 
 
