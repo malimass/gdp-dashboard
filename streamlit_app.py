@@ -26,9 +26,12 @@ def extract_data_from_polar_link(link):
 
     data = {"date": date_text}
     for metric in metrics:
-        label = metric.select_one(".label").text.strip()
-        value = metric.select_one(".value").text.strip()
-        data[label] = value
+        try:
+            label = metric.select_one(".label").text.strip()
+            value = metric.select_one(".value").text.strip()
+            data[label] = value
+        except:
+            continue
 
     # Converti a DataFrame
     df = pd.DataFrame([data])
@@ -39,13 +42,15 @@ def extract_data_from_polar_link(link):
 def compute_training_load(row):
     if "Durata" in row and isinstance(row["Durata"], str):
         t = row["Durata"].split(":")
-        duration_min = int(t[0]) * 60 + int(t[1])
+        try:
+            duration_min = int(t[0]) * 60 + int(t[1])
+        except:
+            duration_min = 0
     else:
         duration_min = 0
     return duration_min * 1  # intensità arbitraria
 
 # Analisi predittiva semplificata
-
 def performance_analysis(df):
     df["training_load"] = df.apply(compute_training_load, axis=1)
     df.set_index("date", inplace=True)
@@ -79,13 +84,6 @@ if link_input:
     - ACWR > 1.5 = rischio infortunio
     - ACWR < 0.8 = carico troppo basso
     """)
-
 else:
     st.title("Benvenuto nella tua App di Analisi Allenamenti Polar")
     st.markdown("Carica un link condiviso da Polar Flow per analizzare i tuoi dati di allenamento.")
-
-
-else:
-    st.title("Benvenuto nella tua App di Analisi Allenamenti Polar")
-    st.markdown("Carica un link condiviso da Polar Flow per analizzare i tuoi dati di allenamento.")
-    st.markdown("Per funzionare completamente, assicurati di avere un file CSV esportato da Polar Flow.")
