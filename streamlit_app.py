@@ -83,11 +83,29 @@ if not df.empty:
     acwr_monthly = monthly_load / monthly_chronic
     acwr = weekly_load / chronic_load
 
-    st.subheader("📊 Andamento ACWR settimanale")
-    st.line_chart(acwr)
+    st.subheader("📊 Andamento ACWR Settimanale")
+    fig1, ax1 = plt.subplots()
+    ax1.plot(acwr.index, acwr, marker='o', color='orange', label='ACWR Settimanale')
+    ax1.axhline(1.5, color='red', linestyle='--', linewidth=1, label='Soglia Alto Rischio')
+    ax1.axhline(0.8, color='blue', linestyle='--', linewidth=1, label='Soglia Basso Carico')
+    ax1.set_ylabel("ACWR")
+    ax1.set_xlabel("Settimana")
+    ax1.set_title("Andamento ACWR Settimanale")
+    ax1.legend()
+    ax1.grid(True)
+    st.pyplot(fig1)
 
-    st.subheader("📆 Andamento ACWR mensile")
-    st.line_chart(acwr_monthly)
+    st.subheader("📆 Andamento ACWR Mensile")
+    fig2, ax2 = plt.subplots()
+    ax2.plot(acwr_monthly.index, acwr_monthly, marker='o', color='green', label='ACWR Mensile')
+    ax2.axhline(1.5, color='red', linestyle='--', linewidth=1, label='Soglia Alto Rischio')
+    ax2.axhline(0.8, color='blue', linestyle='--', linewidth=1, label='Soglia Basso Carico')
+    ax2.set_ylabel("ACWR")
+    ax2.set_xlabel("Mese")
+    ax2.set_title("Andamento ACWR Mensile")
+    ax2.legend()
+    ax2.grid(True)
+    st.pyplot(fig2)
 
     latest_acwr = acwr.dropna().iloc[-1] if not acwr.dropna().empty else None
     if latest_acwr:
@@ -125,12 +143,40 @@ if not df.empty:
     weekly_score = df[["Punteggio"]].resample("W").mean()
     monthly_score = df[["Punteggio"]].resample("M").mean()
     st.subheader("📅 Media Settimanale")
-    st.bar_chart(weekly_score)
+    fig3, ax3 = plt.subplots()
+    ax3.bar(weekly_score.index, weekly_score["Punteggio"], color='skyblue')
+    ax3.set_ylabel("Punteggio Medio")
+    ax3.set_title("Punteggio Medio Settimanale")
+    ax3.grid(True)
+    st.pyplot(fig3)
 
     st.subheader("📆 Media Mensile")
-    st.bar_chart(monthly_score)
+    fig4, ax4 = plt.subplots()
+    ax4.bar(monthly_score.index, monthly_score["Punteggio"], color='lightgreen')
+    ax4.set_ylabel("Punteggio Medio")
+    ax4.set_title("Punteggio Medio Mensile")
+    ax4.grid(True)
+    st.pyplot(fig4)
+
+    # Osservazioni automatiche del coach
+    st.subheader("🗣️ Osservazioni del Coach")
+    avg_score = df["Punteggio"].mean()
+    total_minutes = df["Durata"].sum()
+    zone2_avg = df["Tempo in Zona 2"].mean()
+    if avg_score >= 3.5:
+        st.success("✅ Ottima costanza! Il carico di allenamento è efficace.")
+    elif avg_score >= 2.5:
+        st.info("📈 Buon andamento. Puoi spingere un po’ di più nelle prossime settimane.")
+    else:
+        st.warning("⚠️ Attenzione: il punteggio medio è basso. Valuta maggiore intensità o costanza.")
+
+    if total_minutes < 300:
+        st.warning("📉 Il volume totale settimanale è basso. Rischio di regressione della performance.")
+    if zone2_avg < 20:
+        st.warning("🫀 Poco tempo nella Zona 2. Lavora di più sulla resistenza aerobica.")
 
 else:
     st.info("⚠️ Nessun file JSON trovato nella cartella `data/`. Carica dei file per iniziare.")
+
 
 
