@@ -67,14 +67,13 @@ if uploaded_files:
         st.subheader("📅 Allenamenti Caricati")
         styled_df = df.style
         styled_df = styled_df.applymap(
-        lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160 else '',
-        subset=["Frequenza Cardiaca Massima"]
-)
-        styled_df = styled_df.applymap(
-        lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10 else '',
-        subset=["Tempo in Zona 2"]
-)
-
+            lambda v: 'background-color: #ffcccc' if isinstance(v, (int, float)) and v > 160 else '',
+            subset=["Frequenza Cardiaca Massima"]
+        )
+                styled_df = styled_df.applymap(
+            lambda v: 'background-color: #fff3cd' if isinstance(v, (int, float)) and v < 10 else '',
+            subset=["Tempo in Zona 2"]
+        )
         st.dataframe(styled_df, use_container_width=True)
 
         # Analisi Zone Cardiache
@@ -133,10 +132,9 @@ if uploaded_files:
                 st.error(f"🚨 ACWR = {latest_acwr:.2f} → Alto rischio infortunio. Riduci il carico.")
             elif latest_acwr < 0.8:
                 st.warning(f"⚠️ ACWR = {latest_acwr:.2f} → Carico troppo basso, potenziale calo di performance.")
-            else:
-                st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
+            
 
-        # Calcolo carico mensile e ACWR mensile
+        # Calcolo carico mensile, ACWR mensile e punteggio prestazione
         st.subheader("📆 Carico Mensile e ACWR")
         carico_mensile = df.groupby("Mese")["Durata"].sum()
         st.bar_chart(carico_mensile)
@@ -155,19 +153,21 @@ if uploaded_files:
             else:
                 st.success(f"✅ ACWR Mensile = {latest_acwr_mensile:.2f} → Buon equilibrio mensile.")
 
+        # Sistema di punteggio settimanale
+        st.subheader("🏅 Valutazione Settimane di Allenamento")
+        def calcola_punteggio(row):
+            score = 0
+            if row["Frequenza Cardiaca Media"] >= 100: score += 1
+            if row["Durata"] >= 60: score += 1
+            if row["Tempo in Zona 2"] >= 20: score += 1
+            if row["Velocità Media (km/h)"] >= 5.5: score += 1
+            return score
+
+        df["Punteggio Allenamento"] = df.apply(calcola_punteggio, axis=1)
+        punteggi_settimana = df.groupby("Settimana")["Punteggio Allenamento"].mean()
+        st.bar_chart(punteggi_settimana.rename("Punteggio Medio per Settimana"))
+
 else:
                 st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
 else:
     st.info("Carica almeno un file JSON per iniziare l'analisi.")
-
-
-
-
-
-
-
-
-
-
-
-
