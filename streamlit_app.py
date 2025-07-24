@@ -34,12 +34,11 @@ def load_multiple_json_training_data(uploaded_files):
             duration_iso = exercise.get("duration", "PT0S")
             duration_seconds = isodate.parse_duration(duration_iso).total_seconds()
 
-            # Estrazione e annotazione dettagliata dei campi JSON
             record = {
-                "date": pd.to_datetime(exercise.get("startTime")),  # Data e ora di inizio
-                "Durata": duration_seconds / 60,  # Durata in minuti
-                "Distanza (km)": exercise.get("distance", 0) / 1000,  # Distanza in km
-                "Calorie": exercise.get("kiloCalories", 0),  # Calorie consumate
+                "date": pd.to_datetime(exercise.get("startTime")),
+                "Durata": duration_seconds / 60,
+                "Distanza (km)": exercise.get("distance", 0) / 1000,
+                "Calorie": exercise.get("kiloCalories", 0),
                 "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("avg", 0),
                 "Frequenza Cardiaca Massima": exercise.get("heartRate", {}).get("max", 0),
                 "Velocità Media (km/h)": exercise.get("speed", {}).get("avg", 0),
@@ -79,8 +78,31 @@ file_names = [f for f in os.listdir("data") if f.endswith(".json")]
 data_files = [open(os.path.join("data", f), "rb") for f in file_names]
 df = load_multiple_json_training_data(data_files) if data_files else pd.DataFrame()
 
+# Visualizzazione dei dati elaborati
+if not df.empty:
+    st.subheader("📈 Riepilogo Allenamenti")
+    st.dataframe(df)
 
+    # Analisi settimanale e mensile
+    df.set_index("date", inplace=True)
+    weekly = df.resample("W").sum(numeric_only=True)
+    monthly = df.resample("M").sum(numeric_only=True)
 
+    st.subheader("📆 Analisi Settimanale e Mensile")
+    st.write("**Totale Distanza Settimanale:**")
+    st.bar_chart(weekly["Distanza (km)"])
 
+    st.write("**Totale Distanza Mensile:**")
+    st.bar_chart(monthly["Distanza (km)"])
+
+    # Previsione futura dei km
+    pred_sett = weekly["Distanza (km)"].rolling(window=3).mean().iloc[-1]
+    pred_mese = monthly["Distanza (km)"].rolling(window=2).mean().iloc[-1]
+    st.subheader("🔮 Previsione Kilometri Futura")
+    st.success(f"📅 Previsto per la prossima settimana: {pred_sett:.1f} km")
+    st.success(f"🗓️ Previsto per il prossimo mese: {pred_mese:.1f} km")
+
+else:
+    st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
 
 
