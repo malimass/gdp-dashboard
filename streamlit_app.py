@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import datetime
 import json
 import isodate
+import os
 
-# Funzione per caricare più file JSON di allenamento
+# Funzione per caricare più file JSON di allenamento da caricamento manuale
 @st.cache_data
 def load_multiple_json_training_data(uploaded_files):
     records = []
@@ -35,6 +36,35 @@ def load_multiple_json_training_data(uploaded_files):
     df = df.dropna(subset=["date"]).sort_values("date")
     return df
 
+# Funzione per caricare file JSON da cartella predefinita (per il coach)
+@st.cache_data
+def load_json_from_folder(folder_path="data"):
+    records = []
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".json"):
+            try:
+                with open(os.path.join(folder_path, filename)) as f:
+                    data = json.load(f)
+                    exercise = data.get("exercises", [{}])[0]
+                    duration_iso = exercise.get("duration", "PT0S")
+                    duration_seconds = isodate.parse_duration(duration_iso).total_seconds()
+
+                    record = {
+                        "date": pd.to_datetime(exercise.get("startTime")),
+                        "Durata": duration_seconds / 60,
+                        "Distanza (km)": exercise.get("distance", 0) / 1000,
+                        "Calorie": exercise.get("kiloCalories", 0),
+                        "Frequenza Cardiaca Media": exercise.get("heartRate", {}).get("avg", 0),
+                        "Frequenza Cardiaca Massima": exercise.get("heartRate", {}).get("max", 0),
+                        "Sport": exercise.get("sport", "N/D")
+                    }
+                    records.append(record)
+            except Exception as e:
+                st.warning(f"Errore nel file {filename}: {e}")
+    df = pd.DataFrame(records)
+    df = df.dropna(subset=["date"]).sort_values("date")
+    return df
+
 # Calcolo carico (robusto)
 def compute_training_load(row):
     if row["Calorie"] > 0:
@@ -57,32 +87,30 @@ def performance_analysis(df):
 # UI Streamlit
 st.title("Polar Flow Analyzer – Preparatore Virtuale")
 
-uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar Flow", type="json", accept_multiple_files=True)
+if "coach_mode" in st.query_params:
+    df = load_json_from_folder("data")
+    st.success("Modalità coach: dati letti dalla cartella condivisa `/data`")
+else:
+    uploaded_files = st.sidebar.file_uploader("Carica uno o più file JSON da Polar Flow", type="json", accept_multiple_files=True)
+    df = load_multiple_json_training_data(uploaded_files) if uploaded_files else pd.DataFrame()
 
-if uploaded_files:
-    df = load_multiple_json_training_data(uploaded_files)
+if not df.empty:
     st.subheader("📋 Dati Allenamento Estratti")
     st.dataframe(df)
 
-    if not df.empty:
-        # Calcolo training load e analisi
-        daily_loads, acwr = performance_analysis(df)
+    # Calcolo training load e analisi
+    daily_loads, acwr = performance_analysis(df)
 
-        st.subheader("📊 Analisi Predittiva – Coach Virtuale")
-        st.line_chart(daily_loads.rename("Carico Giornaliero"))
-        st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
+    st.subheader("📊 Analisi Predittiva – Coach Virtuale")
+    st.line_chart(daily_loads.rename("Carico Giornaliero"))
+    st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
-        st.markdown("""
-        ### Feedback:
-        - ACWR > 1.5 = rischio infortunio
-        - ACWR < 0.8 = carico troppo basso
-        """)
-    else:
-        st.warning("Nessun dato valido da analizzare.")
+    st.markdown("""
+    ### Feedback:
+    - ACWR > 1.5 = rischio infortunio
+    - ACWR < 0.8 = carico troppo basso
+    """)
 else:
-    st.info("Carica uno o più file JSON di allenamento esportati da Polar Flow per iniziare.")
-
-
-
+    st.info("Carica file JSON o usa la modalità ?coach_mode=true per lettura automatica da cartella.")
 
 
