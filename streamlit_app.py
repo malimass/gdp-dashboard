@@ -122,7 +122,7 @@ if not df.empty:
     st.line_chart(acwr.rename("ACWR (Carico Acuto / Cronico)"))
 
     st.markdown("""
-    ### Feedback:
+    ### Analisi Rischio:
     - ACWR > 1.5 = rischio infortunio
     - ACWR < 0.8 = carico troppo basso
     """)
