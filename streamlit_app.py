@@ -86,7 +86,6 @@ if not df.empty:
     fc_max_teorica = 220 - eta
     soglia_critica = 0.9 * fc_max_teorica
 
-    # 🔁 Evoluzione del rischio infortuni nel tempo (aggiornato)
     st.subheader("📉 Evoluzione del Rischio Infortuni")
     df["Supera FC Max"] = df["Frequenza Cardiaca Massima"] > soglia_critica
     df.set_index("date", inplace=True)
@@ -103,7 +102,6 @@ if not df.empty:
         ax_rischio.text(bar.get_x() + bar.get_width()/2, yval + 0.1, int(yval), ha='center', va='bottom', fontsize=8)
     st.pyplot(fig_rischio)
 
-    # 📈 Andamento della FC Massima nel tempo
     st.subheader("📈 Andamento della Frequenza Cardiaca Massima nel tempo")
     fig_fc, ax_fc = plt.subplots(figsize=(10, 4))
     df["Frequenza Cardiaca Massima"].plot(ax=ax_fc, color="darkblue", marker="o", linestyle="-")
@@ -112,6 +110,8 @@ if not df.empty:
     ax_fc.set_title("📊 Frequenza Cardiaca Massima nel tempo")
     ax_fc.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig_fc)
+
 else:
     st.info("Nessun dato disponibile. Carica uno o più file JSON validi.")
+
 
