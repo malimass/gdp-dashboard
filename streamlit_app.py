@@ -169,7 +169,7 @@ if uploaded_files:
         punteggi_settimana = df.groupby("Settimana")["Punteggio Allenamento"].mean()
         st.bar_chart(punteggi_settimana.rename("Punteggio Medio per Settimana"))
 
-else:
-                st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
+ else:
+    st.success(f"✅ ACWR = {latest_acwr:.2f} → Carico allenante equilibrato.")
 else:
     st.info("Carica almeno un file JSON per iniziare l'analisi.")
