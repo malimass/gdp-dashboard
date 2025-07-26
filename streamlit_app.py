@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import pandas as pd
+import os
 
 def load_data(file_path):
     with open(file_path, 'r') as file:
@@ -53,12 +54,17 @@ def provide_feedback(metrics):
 # Streamlit App
 st.title("Coach Virtuale per Allenamenti")
 
-# Caricamento del file JSON
-uploaded_file = st.file_uploader("Carica il tuo file JSON con i dati dell'allenamento", type="json")
+# Selezione del file JSON dalla cartella 'data'
+data_folder = 'data'
+json_files = [f for f in os.listdir(data_folder) if f.endswith('.json')]
 
-if uploaded_file is not None:
+selected_file = st.selectbox("Seleziona il tuo file JSON con i dati dell'allenamento", json_files)
+
+if selected_file:
+    file_path = os.path.join(data_folder, selected_file)
+    
     # Carica i dati dal file JSON
-    data = load_data(uploaded_file)
+    data = load_data(file_path)
     
     # Debug: Stampa i dati caricati
     st.write("Dati caricati:", data)
@@ -76,4 +82,5 @@ if uploaded_file is not None:
     st.subheader("Feedback")
     for line in feedback:
         st.write(line)
+
 
